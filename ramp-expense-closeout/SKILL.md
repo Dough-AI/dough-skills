@@ -67,6 +67,7 @@ Use the **Ramp CLI** when it is installed and signed in; fall back to the **Ramp
   gws drive files list --params '{"pageSize":1}' 2>&1 | grep -v keyring | head -5
   ```
   A `403 insufficient authentication scopes` means the login is missing that service. Ask the cardholder to re-run `gws auth login -s gmail,calendar,drive` (opens a browser), then probe again.
+- **No `gws`? Gmail and Calendar MCP fallback.** If `gws` isn't installed, or Gmail or Calendar doesn't answer, and a Gmail MCP (and a Google Calendar MCP) is connected in this session, use them for step 3 instead: thread search takes the same Gmail query syntax, and reading a message in full-content mode gives sender, date, body and attachment names. Tell the cardholder you are in this mode and what it changes: the MCP cannot download an attachment or convert an email body, so for each matched receipt you give them the subject, sender, date and view link, they save the file (or the email as PDF) and drop it into the session, and you upload it as in step 4. If neither `gws` nor a Gmail MCP is available, skip the Gmail search and say so in the summary.
 - **Context sources:** ask the cardholder once, naming the MCP servers actually connected in this session: "Do you also want me to search a tool you use for the business context behind these receipts, such as travel requests, purchase approvals or trip plans? For example:
   - **Notion:** a trip plan or offsite page
   - **Asana, Jira or Linear:** a travel or purchase request ticket and its approval
@@ -136,6 +137,8 @@ Gather context once for the date range covered by the open items, then reuse it 
 gws calendar events list --params '{"calendarId":"primary","timeMin":"<YYYY-MM-DD>T00:00:00Z","timeMax":"<YYYY-MM-DD>T23:59:59Z","singleEvents":true,"orderBy":"startTime","fields":"items(summary,location,start,end,attendees(email,displayName))"}' 2>&1 | grep -v keyring
 ```
 
+With the Calendar MCP instead: list the primary calendar's events for the same window.
+
 If a field-masked call returns `{}`, re-run it without `fields` before concluding the calendar is empty.
 
 **Gmail (`gws`).** Per item without a receipt, search around the charge:
@@ -144,6 +147,8 @@ If a field-masked call returns `{}`, re-run it without `fields` before concludin
 gws gmail users messages list --params '{"userId":"me","q":"<merchant keyword> after:<date-3d YYYY/MM/DD> before:<date+4d YYYY/MM/DD>","maxResults":10}' 2>&1 | grep -v keyring
 gws gmail users messages get --params '{"userId":"me","id":"<msg_id>","format":"full"}' 2>&1 | grep -v keyring
 ```
+
+With the Gmail MCP instead: its thread search takes the same query string; then read the matching message in full-content mode for sender, date, body and attachment names.
 
 Try a second query with the amount (e.g. `"45.20"` or `"45,20"`) if the merchant keyword finds nothing. Booking sites often bill under a different name from the hotel or airline, so try the booking site's name too.
 
@@ -179,6 +184,7 @@ On the CLI, run each write with `--dry_run` first where the tool's help lists it
 **Receipt.** Ramp accepts PDF, PNG, JPG, JPEG, HEIC and WebP files up to 20 MB and 50 PDF pages, so the original file goes up as it is: no conversion to an image, no public link. Every shell command starts with `cd "$WORK"` (create it once with `mkdir -p "$WORK"`). Name every file `ramp-closeout_<YYYY-MM-DD>_<merchant>_<amount>.<ext>`.
 
 1. **Get the file.**
+   - Gmail MCP mode (no `gws`): you can't fetch the file. Give the cardholder the subject, sender, date and view link of the matched message; they save the attachment (or the email as PDF) and drop it into the session. Check it shows the merchant and the total, then continue at 2 with that file.
    - Attachment: the attachment id is `payload.parts[].body.attachmentId` in the `format=full` message (parts can be nested). Fetch and decode it, keeping the extension from the part's `filename` or `mimeType` (PDF, PNG, JPG, HEIC, WebP):
      ```bash
      gws gmail users messages attachments get --params '{"userId":"me","messageId":"<msg_id>","id":"<attachment_id>"}' 2>&1 | grep -v keyring > att.json
@@ -213,7 +219,7 @@ End with:
 - Still open: what is missing on each, and why (no receipt found, skipped, forwarded but not matched yet, tool gap).
 - Flagged: over cap, card fit, personal, trip checks, each with the policy line and the repayment route from the policy, or the reason only when there is no policy.
 - Skipped checks: policy checks that didn't run without the policy, and trip checks that didn't run without a context source or Ramp trip.
-- Backend used: Ramp CLI or Ramp MCP, and any step that needed the cardholder because of it.
+- Backend used: Ramp CLI or Ramp MCP, and whether Gmail and Calendar ran through `gws` or their MCPs, with any step that needed the cardholder because of it.
 - Next due: any Ramp due date or card lock, then the policy deadline.
 - Clean-up check: rerun the step 0 leftovers list and confirm nothing from this run is left in Drive; delete the local `$WORK` folder.
 

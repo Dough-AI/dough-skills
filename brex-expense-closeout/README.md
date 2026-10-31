@@ -27,6 +27,7 @@ Not affiliated with or endorsed by Brex or Google. Brex is a trademark of Brex I
   - Claude Code: `claude mcp add --transport http brex https://api.brex.com/mcp`, then sign in when prompted
   - Codex: `codex mcp add brex --url https://api.brex.com/mcp`, then `codex mcp login brex`
 - Google Workspace CLI: `npm install -g @googleworkspace/cli` (written against 0.22), signed in with Gmail, Calendar and Drive
+  - No `gws`? In the Claude apps, the Gmail and Google Calendar connectors work as a fallback for search and matching; you then upload each matched receipt in the Brex app yourself (see Known limits)
 - Python 3 with `pypdfium2` and `pillow`
 - Optional: a browser tool, if your agent has one, to set expense categories, which the Brex MCP couldn't do when this was written. Without one, the skill gives you the category name for each expense to set in the Brex app yourself
 
@@ -45,6 +46,7 @@ Observed in October 2026; Brex and Google may change any of this.
 - **Receipt upload:** the Brex MCP only accepts a public link, not a file. Each receipt is shared from Drive with anyone who has the link, then deleted and checked gone. Multi-page PDFs are stitched into one image first.
 - **Expense category:** the Brex MCP can't set it, so the skill sets it in the Brex web app through a browser tool, after the cardholder signs in. If the agent has no browser tool, the cardholder sets it in the Brex app from the category name the skill gives them.
 - **What Brex stored:** a higher receipt count shows Brex accepted a file, not what it stored. The skill checks each image before upload.
+- **Gmail MCP fallback is partial.** The Gmail connector can search and read email but cannot download an attachment, and the Drive connector cannot share a file with anyone who has the link, so in that mode the skill gives you the subject, sender, date and link of each matched receipt and you upload it in the Brex app. Memos and categories still work. Codex has no Gmail connector; use `gws` there.
 - **Safety:** the skill reads email and other content that could contain instructions aimed at it. Its rules tell it to treat that content as data and to show every change before writing, but these are instructions to the model, not enforced controls. Review each proposed change.
 
 ## Files

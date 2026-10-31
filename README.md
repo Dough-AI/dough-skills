@@ -7,7 +7,7 @@ Open-source skills from [Dough](https://usedough.com) for finance work, written 
 | [brex-expense-closeout](brex-expense-closeout/) | Closes out a Brex cardholder's open expenses: finds receipts in Gmail, drafts memos from calendar and connected tools, picks the category, writes each fix after a yes. | Brex MCP, Google Workspace CLI, Python 3 |
 | [ramp-expense-closeout](ramp-expense-closeout/) | The same for a Ramp cardholder. Uses the Ramp CLI, or the Ramp MCP when the CLI isn't installed. | Ramp CLI or Ramp MCP, Google Workspace CLI, Python 3 |
 
-Each folder's README has the full requirements, setup and known limits. Read the Brex one before using it: receipts pass through a briefly public Google Drive link.
+Each folder's README has the full requirements, setup and known limits. Both skills prefer the Google Workspace CLI and fall back to the Gmail and Google Calendar connectors in the Claude apps when it isn't installed, with receipts downloaded or uploaded by hand in that mode. Read the Brex one before using it: receipts pass through a briefly public Google Drive link.
 
 ## Install
 

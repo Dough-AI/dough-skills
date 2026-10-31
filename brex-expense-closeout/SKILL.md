@@ -44,6 +44,7 @@ WORK="$HOME/brex-receipts"                       # local scratch; gws only uploa
   gws drive files list --params '{"pageSize":1}' 2>&1 | grep -v keyring | head -5
   ```
   A `403 insufficient authentication scopes` means the login is missing that service. Ask the cardholder to re-run `gws auth login -s gmail,calendar,drive` (opens a browser), then probe again.
+- **No `gws`? Gmail and Calendar MCP fallback.** If `gws` isn't installed, or Gmail or Calendar doesn't answer, and a Gmail MCP (and a Google Calendar MCP) is connected in this session, use them for step 3 instead: thread search takes the same Gmail query syntax, and reading a message in full-content mode gives sender, date, body and attachment names. Tell the cardholder you are in this mode and what it changes: the MCP cannot download an attachment, and without `gws` there is no Drive hand-off either (the Drive MCP can't share a file with anyone who has the link, nor delete one permanently), so for each matched receipt you give them the subject, sender, date and view link and they upload it in the Brex app themselves. Memos and categories still go through this skill. If neither `gws` nor a Gmail MCP is available, skip the Gmail search and say so in the summary.
 - **Context sources:** ask the cardholder once: "Is there a connected tool I should search for the business context behind these expenses, such as travel requests, purchase approvals or trip plans? For example Slack, Notion, Asana, Jira, Confluence, Google Drive, or something else." Check which MCP servers are actually connected in this session and name them in the question. Use only the ones the cardholder picks, read-only. If none, carry on with Calendar and Gmail.
 - **Receipt tools:** `"$PY" -c "import pypdfium2, PIL"`. If it fails: `"$PY" -m pip install --user pypdfium2 pillow`. If pip refuses with "externally-managed-environment", make a virtual environment in `$WORK` (`"$PY" -m venv "$WORK/.venv"`, install there) and set `PY` to its Python (`$WORK/.venv/bin/python`, or `$WORK/.venv/Scripts/python.exe` on Windows) in every later shell command.
 - **Leftovers from an earlier run.** A run that died between sharing and deleting leaves a receipt public. Every receipt this skill uploads is named `brex-closeout_...`, so list only those:
@@ -105,6 +106,8 @@ Gather context once for the date range covered by the open items, then reuse it 
 gws calendar events list --params '{"calendarId":"primary","timeMin":"<YYYY-MM-DD>T00:00:00Z","timeMax":"<YYYY-MM-DD>T23:59:59Z","singleEvents":true,"orderBy":"startTime","fields":"items(summary,location,start,end,attendees(email,displayName))"}' 2>&1 | grep -v keyring
 ```
 
+With the Calendar MCP instead: list the primary calendar's events for the same window.
+
 If a field-masked call returns `{}`, re-run it without `fields` before concluding the calendar is empty.
 
 **Gmail (`gws`).** Per item without a receipt, search around the charge:
@@ -113,6 +116,8 @@ If a field-masked call returns `{}`, re-run it without `fields` before concludin
 gws gmail users messages list --params '{"userId":"me","q":"<merchant keyword> after:<date-3d YYYY/MM/DD> before:<date+4d YYYY/MM/DD>","maxResults":10}' 2>&1 | grep -v keyring
 gws gmail users messages get --params '{"userId":"me","id":"<msg_id>","format":"full"}' 2>&1 | grep -v keyring
 ```
+
+With the Gmail MCP instead: its thread search takes the same query string; then read the matching message in full-content mode for sender, date, body and attachment names.
 
 Try a second query with the amount (e.g. `"45.20"` or `"45,20"`) if the merchant keyword finds nothing. Booking sites often bill under a different name from the hotel or airline, so try the booking site's name too.
 
@@ -145,6 +150,7 @@ Then, on yes:
 **Receipt.** As observed when this skill was written, Brex only accepts a file it can fetch anonymously as an image: a private Drive link stores Google's sign-in page as the receipt, and anyone-with-link Drive download links are refused. What worked is Drive's preview-image link on a file shared with anyone who has the link. That link shows page 1 only, so every receipt goes in as one image.
 
 1. **Make the image.** Every shell command starts with `cd "$WORK"` (create it once with `mkdir -p "$WORK"`). Name every file `brex-closeout_<YYYY-MM-DD>_<merchant>_<amount>`.
+   - Gmail MCP mode (no `gws`): you can't fetch the file and can't do the Drive hand-off. Give the cardholder the subject, sender, date and view link of the matched message; they save the receipt and upload it in the Brex app, then you read the expense back (receipt count went up) and skip the rest of this receipt step. If `gws` is installed and Drive answers but Gmail doesn't, they can drop the file into the session instead and you continue from the stitch step.
    - Attachment: fetch and decode it.
      ```bash
      gws gmail users messages attachments get --params '{"userId":"me","messageId":"<msg_id>","id":"<attachment_id>"}' 2>&1 | grep -v keyring > att.json
@@ -205,6 +211,7 @@ End with:
 - Still open: what is missing on each, and why (no receipt found, skipped, tool gap).
 - Flagged: over cap, card fit, personal, trip checks, each with the policy line and the repayment route from the policy, or the reason only when there is no policy.
 - Skipped checks: policy checks that didn't run without the policy, and trip checks that didn't run without a context source.
+- Google access used: `gws`, or the Gmail and Calendar MCPs with receipts uploaded by the cardholder.
 - Next due: the next Brex due date and the items it applies to, then the policy deadline.
 - Clean-up check: rerun the step 0 leftovers list and confirm nothing from this run is left; no wrong attachments left on any expense; delete the local `$WORK` folder.
 

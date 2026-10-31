@@ -26,6 +26,7 @@ Not affiliated with or endorsed by Ramp or Google. Ramp is a trademark of its ow
     - Claude Code: `claude mcp add --transport http ramp https://mcp.ramp.com/mcp`, then sign in when prompted (in the Claude apps it is in the connector directory)
     - Codex: `codex mcp add ramp --url https://mcp.ramp.com/mcp`, then `codex mcp login ramp`
 - Google Workspace CLI: `npm install -g @googleworkspace/cli` (written against 0.22), signed in with Gmail and Calendar, plus Drive for receipt emails without an attachment
+  - No `gws`? In the Claude apps, the Gmail and Google Calendar connectors work as a fallback for search and matching; you then download each matched receipt yourself and drop it into the session (see Known limits)
 - Python 3 (standard library only)
 
 ## Setup
@@ -46,6 +47,7 @@ From Ramp's public docs, October 2026; Ramp may change any of this.
 - **Ramp MCP returns nothing for queries over 100 rows,** so the skill reads one month at a time.
 - **Most CLI flags aren't in the public docs.** The skill reads each command's `--help` before using it, and dry-runs each write whose help lists `--dry_run`.
 - **The CLI and MCP can also approve, reject and lock** for approvers and admins. The skill limits itself to a short list of writes on the cardholder's own transactions, but that limit is an instruction to the model, not a permission Ramp enforces.
+- **Gmail MCP fallback is partial.** The Gmail connector can search and read email but cannot download an attachment, so in that mode the skill gives you the subject, sender, date and link of each matched receipt and you drop the file into the session. Codex has no Gmail connector; use `gws` there.
 - **Safety:** the skill reads email and other content that could contain instructions aimed at it. Its rules tell it to treat that content as data and to show every change before writing, but these are instructions to the model, not enforced controls. Review each proposed change.
 
 ## Files
